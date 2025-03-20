@@ -41,7 +41,7 @@ jobs:
         copy path\to\vcpkg\installed\x64-windows\lib\MinHook.x64.lib build_output\libMinHook.x64.lib
 
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
-        name: build-artifacts
+        name: S2MP-Mod-Release
         path: build_output
