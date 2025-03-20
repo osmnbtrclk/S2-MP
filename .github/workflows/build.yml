@@ -80,52 +80,43 @@ jobs:
       
     - name: Modify project file to use static library reference
       run: |
-        # Create a project-specific lib directory for MinHook
-        if [ ! -d "S2MP-Mod/lib" ]; then
-          mkdir -p S2MP-Mod/lib
-        fi
-        
-        # Create vcxproj.user file with custom library paths
+        # Create vcxproj.user file with custom library paths that APPEND rather than override
         echo "<?xml version=\"1.0\" encoding=\"utf-8\"?>
         <Project ToolsVersion=\"Current\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\">
           <PropertyGroup Condition=\"'$(Configuration)|$(Platform)'=='Release|x64'\">
-            <LibraryPath>$(ProjectDir)lib;$(SolutionDir)lib\Release;$(SolutionDir)x64\Release;$(SolutionDir);$(LibraryPath)</LibraryPath>
+            <LibraryPath>$(SolutionDir)lib\Release;$(SolutionDir)S2MP-Mod\lib;$(LibraryPath)</LibraryPath>
+            <IncludePath>$(SolutionDir)include;$(IncludePath)</IncludePath>
           </PropertyGroup>
         </Project>" > S2MP-Mod/S2MP-Mod.vcxproj.user
-        
-        # Create a simple props file to include the library
-        echo "<?xml version=\"1.0\" encoding=\"utf-8\"?>
-        <Project ToolsVersion=\"4.0\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\">
-          <ItemDefinitionGroup>
-            <Link>
-              <AdditionalDependencies>libMinHook.x64.lib;%(AdditionalDependencies)</AdditionalDependencies>
-            </Link>
-          </ItemDefinitionGroup>
-        </Project>" > S2MP-Mod/MinHook.props
-        
-        # Create a directory.props file to define additional directories
-        echo "<?xml version=\"1.0\" encoding=\"utf-8\"?>
-        <Project ToolsVersion=\"4.0\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\">
-          <PropertyGroup>
-            <LibraryPath>$(ProjectDir)lib;$(SolutionDir)lib\Release;$(SolutionDir)x64\Release;$(SolutionDir);$(LibraryPath)</LibraryPath>
-          </PropertyGroup>
-        </Project>" > Directory.Build.props
       shell: bash
+      
+    - name: Modify project to include library directly
+      run: |
+        echo "Attempting to add direct reference to the library file"
+        powershell -Command "(Get-Content S2MP-Mod/S2MP-Mod.vcxproj) -replace '<AdditionalDependencies>', '<AdditionalDependencies>MinHook.x64.lib;libMinHook.x64.lib;' | Set-Content S2MP-Mod/S2MP-Mod.vcxproj"
+      shell: cmd
       
     - name: Update Project Library Settings
       run: |
         REM Display current directory structure for debugging
         dir /s /b lib
         echo ---------------------
-        dir /s /b x64
-        echo ---------------------
         dir /s /b S2MP-Mod\lib
+      shell: cmd
+      
+    - name: Find and setup Windows SDK paths
+      run: |
+        echo "Setting up environment variables for Windows SDK"
+        for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do (
+          set InstallDir=%%i
+        )
+        call "!InstallDir!\VC\Auxiliary\Build\vcvarsall.bat" x64
       shell: cmd
       
     - name: Build solution
       run: |
-        REM Add additional library paths to MSBuild command
-        msbuild /m /p:Configuration=Release /p:Platform=x64 /p:AdditionalLibraryDirectories="%CD%\lib\Release;%CD%;%CD%\x64\Release;%CD%\S2MP-Mod\lib" S2MP-Mod.sln
+        REM Basic build without overriding lib paths
+        msbuild /m /p:Configuration=Release /p:Platform=x64 S2MP-Mod.sln
       shell: cmd
         
     - name: Upload Build Artifacts
