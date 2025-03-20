@@ -1,4 +1,4 @@
-name: Build Project
+name: Build S2MP-Mod
 
 on:
   push:
@@ -15,30 +15,33 @@ jobs:
     
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
-    - name: Set up vcpkg manually
+    - name: Set up vcpkg
       run: |
         git clone https://github.com/microsoft/vcpkg
         cd vcpkg
-        .\bootstrap-vcpkg.bat
-        .\vcpkg\vcpkg integrate install
-        .\vcpkg\vcpkg install minhook
+        bootstrap-vcpkg.bat
+      shell: cmd
+
+    - name: Install MinHook with vcpkg
+      run: |
+        vcpkg\vcpkg.exe install minhook:x64-windows-static
+      shell: cmd
 
     - name: Set up Visual Studio
-      uses: microsoft/setup-msbuild@v1
-      with:
-        vs-version: 'latest'
+      uses: microsoft/setup-msbuild@v1.1
 
     - name: Build solution
       run: |
-        cd path/to/your/sln/folder
-        msbuild your_solution.sln /p:Configuration=Release /p:Platform=x64
+        msbuild path\to\your_solution.sln /p:Configuration=Release /p:Platform=x64
+      shell: cmd
 
     - name: Copy the libMinHook.x64.lib
       run: |
         mkdir build_output
-        copy path\to\vcpkg\installed\x64-windows\lib\MinHook.x64.lib build_output\libMinHook.x64.lib
+        copy vcpkg\installed\x64-windows-static\lib\MinHook.lib build_output\libMinHook.x64.lib
+      shell: cmd
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
