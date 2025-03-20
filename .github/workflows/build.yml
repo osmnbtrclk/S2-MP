@@ -23,14 +23,31 @@ jobs:
         
     - name: Download and Setup MinHook
       run: |
-        git clone https://github.com/TsudaKageyu/minhook.git
+        # Clone MinHook repo if it doesn't exist
+        if [ ! -d "minhook" ]; then
+          git clone https://github.com/TsudaKageyu/minhook.git
+        else
+          echo "MinHook repository already exists, skipping clone"
+        fi
+        
         cd minhook
+        # Remove existing build directory if it exists and create a new one
+        if [ -d "build" ]; then
+          rm -rf build
+        fi
         mkdir build
         cd build
+        
         cmake -G "Visual Studio 17 2022" -A x64 -DBUILD_SHARED_LIBS=OFF ..
         cmake --build . --config Release
+        
+        # Ensure the destination directory exists
+        mkdir -p ../../../lib/Release
         cp ./Release/MinHook.x64.lib ../../../lib/Release/libMinHook.x64.lib
+        
         cd ../../
+        # Ensure includes directory exists
+        mkdir -p include
         cp -r minhook/include/* include/
       shell: bash
       
