@@ -24,9 +24,20 @@ jobs:
         bootstrap-vcpkg.bat
       shell: cmd
 
+    - name: Debug library files
+      run: dir /s /b lib\Release
+      shell: cmd
+
     - name: Install MinHook with vcpkg
       run: |
         vcpkg\vcpkg.exe install minhook:x64-windows-static
+      shell: cmd
+
+    - name: Copy the libMinHook.x64.lib
+      run: |
+        mkdir -p build_output
+        mkdir -p lib/Release
+        copy vcpkg\installed\x64-windows-static\lib\MinHook.lib lib/Release/libMinHook.x64.lib
       shell: cmd
 
     - name: Set up Visual Studio
@@ -34,13 +45,7 @@ jobs:
 
     - name: Build solution
       run: |
-        msbuild S2MP-Mod.sln /p:Configuration=Release /p:Platform=x64
-      shell: cmd
-
-    - name: Copy the libMinHook.x64.lib
-      run: |
-        mkdir build_output
-        copy vcpkg\installed\x64-windows-static\lib\MinHook.lib build_output\libMinHook.x64.lib
+        msbuild S2MP-Mod.sln /p:Configuration=Release /p:Platform=x64 /p:AdditionalLibraryDirectories="%CD%\lib\Release"
       shell: cmd
 
     - name: Upload build artifacts
