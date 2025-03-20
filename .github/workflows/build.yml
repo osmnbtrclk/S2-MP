@@ -48,17 +48,25 @@ jobs:
         echo "Contents of ./Release directory:"
         ls -la ./Release
         
-        # Copy the library to the expected location
+        # Copy the library to multiple locations to ensure it's found
         cp ./Release/MinHook.x64.lib ../../../lib/Release/libMinHook.x64.lib
+        cp ./Release/MinHook.x64.lib ../../../libMinHook.x64.lib
+
+        # Also copy with original name in case the project is looking for the original name
+        cp ./Release/MinHook.x64.lib ../../../lib/Release/MinHook.x64.lib
+        cp ./Release/MinHook.x64.lib ../../../MinHook.x64.lib
         
-        # Debug - show the copied file
+        mkdir -p ../../../x64/Release
+        cp ./Release/MinHook.x64.lib ../../../x64/Release/libMinHook.x64.lib
+        cp ./Release/MinHook.x64.lib ../../../x64/Release/MinHook.x64.lib
+        
+        # Debug - show the copied files
         echo "Contents of lib/Release directory after copy:"
         ls -la ../../../lib/Release
-        
-        # Also copy to the root project directory and to x64/Release as a fallback
-        mkdir -p ../../../x64/Release
-        cp ./Release/MinHook.x64.lib ../../../libMinHook.x64.lib
-        cp ./Release/MinHook.x64.lib ../../../x64/Release/libMinHook.x64.lib
+        echo "Contents of x64/Release directory after copy:"
+        ls -la ../../../x64/Release
+        echo "Contents of root directory:"
+        ls -la ../../../
         
         cd ../../
         # Ensure includes directory exists
@@ -66,17 +74,28 @@ jobs:
         cp -r minhook/include/* include/
       shell: bash
       
+    - name: Create vcxproj user file with library paths
+      run: |
+        echo "<?xml version=\"1.0\" encoding=\"utf-8\"?>
+        <Project ToolsVersion=\"Current\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\">
+          <PropertyGroup Condition=\"'$(Configuration)|$(Platform)'=='Release|x64'\">
+            <LibraryPath>$(SolutionDir)lib\Release;$(SolutionDir)x64\Release;$(SolutionDir);$(LibraryPath)</LibraryPath>
+          </PropertyGroup>
+        </Project>" > S2MP-Mod/S2MP-Mod.vcxproj.user
+      shell: bash
+      
     - name: Update Project Library Settings
       run: |
-        # Display current directory structure for debugging
+        REM Display current directory structure for debugging
         dir /s /b lib
+        echo ---------------------
         dir /s /b x64
       shell: cmd
       
     - name: Build solution
       run: |
-        # Add additional library path to MSBuild command
-        msbuild /m /p:Configuration=Release /p:Platform=x64 /p:AdditionalLibraryDirectories="%CD%\lib\Release;%CD%" S2MP-Mod.sln
+        REM Add additional library paths to MSBuild command
+        msbuild /m /p:Configuration=Release /p:Platform=x64 /p:AdditionalLibraryDirectories="%CD%\lib\Release;%CD%;%CD%\x64\Release" S2MP-Mod.sln
       shell: cmd
         
     - name: Upload Build Artifacts
