@@ -34,7 +34,7 @@ jobs:
 
     - name: Build solution
       run: |
-        msbuild path\to\your_solution.sln /p:Configuration=Release /p:Platform=x64
+        msbuild S2MP-Mod.sln /p:Configuration=Release /p:Platform=x64
       shell: cmd
 
     - name: Copy the libMinHook.x64.lib
