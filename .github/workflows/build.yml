@@ -46,7 +46,7 @@ jobs:
         copy path\to\vcpkg\installed\x64-windows\lib\MinHook.x64.lib build_output\libMinHook.x64.lib
 
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: build-artifacts
         path: build_output
