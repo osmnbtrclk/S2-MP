@@ -20,6 +20,8 @@ jobs:
     - name: Create lib directory
       run: |
         mkdir -p lib/Release
+        mkdir -p S2MP-Mod/lib
+      shell: bash
         
     - name: Download and Setup MinHook
       run: |
@@ -41,28 +43,30 @@ jobs:
         cmake -G "Visual Studio 17 2022" -A x64 -DBUILD_SHARED_LIBS=OFF ..
         cmake --build . --config Release
         
-        # Create the destination directories
+        # Create the destination directories and copy to multiple locations
         mkdir -p ../../../lib/Release
+        mkdir -p ../../../S2MP-Mod/lib
+        mkdir -p ../../../x64/Release
         
-        # Copy and rename the library file - show debug info
+        # Show contents for debugging
         echo "Contents of ./Release directory:"
         ls -la ./Release
         
-        # Copy the library to multiple locations to ensure it's found
+        # Copy the library with various names to various locations
         cp ./Release/MinHook.x64.lib ../../../lib/Release/libMinHook.x64.lib
-        cp ./Release/MinHook.x64.lib ../../../libMinHook.x64.lib
-
-        # Also copy with original name in case the project is looking for the original name
         cp ./Release/MinHook.x64.lib ../../../lib/Release/MinHook.x64.lib
+        cp ./Release/MinHook.x64.lib ../../../libMinHook.x64.lib
         cp ./Release/MinHook.x64.lib ../../../MinHook.x64.lib
-        
-        mkdir -p ../../../x64/Release
+        cp ./Release/MinHook.x64.lib ../../../S2MP-Mod/lib/libMinHook.x64.lib
+        cp ./Release/MinHook.x64.lib ../../../S2MP-Mod/lib/MinHook.x64.lib
         cp ./Release/MinHook.x64.lib ../../../x64/Release/libMinHook.x64.lib
         cp ./Release/MinHook.x64.lib ../../../x64/Release/MinHook.x64.lib
         
         # Debug - show the copied files
         echo "Contents of lib/Release directory after copy:"
         ls -la ../../../lib/Release
+        echo "Contents of S2MP-Mod/lib directory after copy:"
+        ls -la ../../../S2MP-Mod/lib
         echo "Contents of x64/Release directory after copy:"
         ls -la ../../../x64/Release
         echo "Contents of root directory:"
@@ -74,14 +78,38 @@ jobs:
         cp -r minhook/include/* include/
       shell: bash
       
-    - name: Create vcxproj user file with library paths
+    - name: Modify project file to use static library reference
       run: |
+        # Create a project-specific lib directory for MinHook
+        if [ ! -d "S2MP-Mod/lib" ]; then
+          mkdir -p S2MP-Mod/lib
+        fi
+        
+        # Create vcxproj.user file with custom library paths
         echo "<?xml version=\"1.0\" encoding=\"utf-8\"?>
         <Project ToolsVersion=\"Current\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\">
           <PropertyGroup Condition=\"'$(Configuration)|$(Platform)'=='Release|x64'\">
-            <LibraryPath>$(SolutionDir)lib\Release;$(SolutionDir)x64\Release;$(SolutionDir);$(LibraryPath)</LibraryPath>
+            <LibraryPath>$(ProjectDir)lib;$(SolutionDir)lib\Release;$(SolutionDir)x64\Release;$(SolutionDir);$(LibraryPath)</LibraryPath>
           </PropertyGroup>
         </Project>" > S2MP-Mod/S2MP-Mod.vcxproj.user
+        
+        # Create a simple props file to include the library
+        echo "<?xml version=\"1.0\" encoding=\"utf-8\"?>
+        <Project ToolsVersion=\"4.0\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\">
+          <ItemDefinitionGroup>
+            <Link>
+              <AdditionalDependencies>libMinHook.x64.lib;%(AdditionalDependencies)</AdditionalDependencies>
+            </Link>
+          </ItemDefinitionGroup>
+        </Project>" > S2MP-Mod/MinHook.props
+        
+        # Create a directory.props file to define additional directories
+        echo "<?xml version=\"1.0\" encoding=\"utf-8\"?>
+        <Project ToolsVersion=\"4.0\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\">
+          <PropertyGroup>
+            <LibraryPath>$(ProjectDir)lib;$(SolutionDir)lib\Release;$(SolutionDir)x64\Release;$(SolutionDir);$(LibraryPath)</LibraryPath>
+          </PropertyGroup>
+        </Project>" > Directory.Build.props
       shell: bash
       
     - name: Update Project Library Settings
@@ -90,12 +118,14 @@ jobs:
         dir /s /b lib
         echo ---------------------
         dir /s /b x64
+        echo ---------------------
+        dir /s /b S2MP-Mod\lib
       shell: cmd
       
     - name: Build solution
       run: |
         REM Add additional library paths to MSBuild command
-        msbuild /m /p:Configuration=Release /p:Platform=x64 /p:AdditionalLibraryDirectories="%CD%\lib\Release;%CD%;%CD%\x64\Release" S2MP-Mod.sln
+        msbuild /m /p:Configuration=Release /p:Platform=x64 /p:AdditionalLibraryDirectories="%CD%\lib\Release;%CD%;%CD%\x64\Release;%CD%\S2MP-Mod\lib" S2MP-Mod.sln
       shell: cmd
         
     - name: Upload Build Artifacts
