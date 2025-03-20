@@ -1,0 +1,47 @@
+name: Build S2MP-Mod
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Add MSBuild to PATH
+      uses: microsoft/setup-msbuild@v1.1
+      
+    - name: Create lib directory
+      run: |
+        mkdir -p lib/Release
+        
+    - name: Download and Setup MinHook
+      run: |
+        git clone https://github.com/TsudaKageyu/minhook.git
+        cd minhook
+        mkdir build
+        cd build
+        cmake -G "Visual Studio 17 2022" -A x64 -DBUILD_SHARED_LIBS=OFF ..
+        cmake --build . --config Release
+        cp ./Release/MinHook.x64.lib ../../../lib/Release/libMinHook.x64.lib
+        cd ../../
+        cp -r minhook/include/* include/
+      shell: bash
+      
+    - name: Build solution
+      run: |
+        msbuild /m /p:Configuration=Release /p:Platform=x64 S2MP-Mod.sln
+        
+    - name: Upload Build Artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: S2MP-Mod-Release
+        path: |
+          x64/Release/S2MP-Mod.dll
+          x64/Release/S2MP-Mod.pdb
