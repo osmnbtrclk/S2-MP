@@ -7,7 +7,6 @@ on:
   pull_request:
     branches:
       - main
-  workflow_dispatch:
 
 jobs:
   build:
@@ -17,12 +16,7 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v2
 
-    - name: Set up vcpkg
-      uses: ms-vcpkg/vcpkg-action@v2
-      with:
-        vcpkgCommit: 'master'
-
-    - name: Install dependencies using vcpkg
+    - name: Set up vcpkg manually
       run: |
         git clone https://github.com/microsoft/vcpkg
         cd vcpkg
